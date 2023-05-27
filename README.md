@@ -37,9 +37,12 @@ history_statefile = rocketchat-history-statefile.pkl
 user = username_goes_here
 pass = pwd_goes_here
 server = https://demo.rocket.chat
+use_pat = no
 max_msg_count_per_day = 99999
 pause_seconds = 1
 ```
+
+Note: if you want to use a personal access token instead of a username and password replace your username with your user id and the password with the token, and set use_pat to yes.
 
 ## Usage
 
