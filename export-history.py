@@ -108,7 +108,139 @@ def get_output_filepath(output_dir, json_data, extension):
 
     return os.path.join(output_dir, filename)
 
+def remove_empty_links(text):
+    text_lines = text.split("\n")
+    new_text = []
+    for line in text_lines:
+        if line == '':
+            new_text.append(line)
+            continue
 
+        line = re.sub(r'(\[ \]\(http[s]?\:\/\/\S+\))', r'', line)
+
+        if line != '':
+            new_text.append(line)
+    
+    return '\n'.join(new_text)
+
+# def is_multiline_code_tag(markdown_line):
+#     words = markdown_line.split(" ")
+#     if words[0].startswith("```") and words[0][3:4] != "`":
+#         return True
+#     else:
+#         return False
+
+# def replace_heading_tags(markdown_line, md_tag, html_tags):
+#     if markdown_line[:len(md_tag) + 1] == md_tag:
+#         letters = list(markdown_line)
+#         del letters[:md_tag_len + 1]
+#         letters.insert(0, html_tags[0])
+#         letters.append(html_tags[1])
+#         return "".join(letters)
+#     else:
+#         return markdown_line
+
+# def replace_tags(markdown_line, md_tag, html_tags):
+#     tag_side = 0
+#     md_tag_len = len(md_tag)
+#     words = markdown_line.split(" ")
+#     converted_words = []
+#     word_pairs = []
+#     word_pair = []
+#     tag_pairs = []
+#     tag_pair = []
+#     for word_i, word in enumerate(words):
+#         for i, char in enumerate(word):
+#             if char == md_tag:
+#                 word_pair.append(word_i)
+#                 tag_pair.append(i)
+#                 if len(tag_pair) == 2:
+#                     word_pairs.append(word_pair)
+#                     word_pair = []
+#                     tag_pairs.append(tag_pair)
+#                     tag_pair = []
+#         # letters = list(word)
+#         # i = 0
+#         # while True:
+#         #     if i >= len(letters):
+#         #         break
+#         #     try:
+#         #         chars = letters[i:i+md_tag_len][0]
+#         #     except IndexError:
+#         #         break
+#         #     if chars == md_tag:
+#         #         word_pair.append(word_i)
+#         #         tag_pair.append(i)
+#         #         if len(tag_pair) == 2:
+#         #             word_pairs.append(word_pair)
+#         #             word_pair = []
+#         #             tag_pairs.append(tag_pair)
+#         #             tag_pair = []
+
+#         #     i += 1
+    
+#     letter_words = [list(word) for word in words]
+#     for word_pair, tag_pair in zip(word_pairs, tag_pairs):
+#         if tag_pair[1] - tag_pair[0] < 1:
+#             continue
+        
+#         for word_i, tag_i in zip(word_pair, tag_pair):
+#             letter_word = letter_words[word_i]
+#             del letter_word[tag_i]
+#             letter_word.insert(tag_i, html_tags[tag_side])
+#             tag_side = int(not tag_side)
+
+#             #del words[word_i]
+#             #words.insert(word_i, "".join(letter_word))
+#     words = ["".join(word) for word in letter_words]
+#     return " ".join(words)
+
+# def convert_markdown_to_html(markdown):
+#     escaped_markdown = html.escape(markdown)
+#     converted_lines = []
+#     multiline_code_tag_pairs = []
+#     multiline_code_tag_pair = []
+#     multiline_code_tag_side = 0
+#     multiline_code_html_tags = ["<pre class='code-block'><code>", "</code></pre>"]
+#     for i, line in enumerate(escaped_markdown.split("\n")):
+#         if is_multiline_code_tag(line):
+#             multiline_code_tag_pair.append(i)
+#             if len(multiline_code_tag_pair) == 2:
+#                 multiline_code_tag_pairs.extend(multiline_code_tag_pair)
+#                 multiline_code_tag_pair = []
+
+    
+#     for i, line in enumerate(escaped_markdown.split("\n")):
+#         if i in multiline_code_tag_pairs:
+#             line = multiline_code_html_tags[multiline_code_tag_side]
+#             multiline_code_tag_side = int(not multiline_code_tag_side)
+#         else:
+#             line = replace_heading_tags(line, "#", ["<h1>", "</h1>"])
+#             line = replace_heading_tags(line, "##", ["<h2>", "</h2>"])
+#             line = replace_heading_tags(line, "###", ["<h3>", "</h3>"])
+#             line = replace_heading_tags(line, "####", ["<h4>", "</h4>"])
+#             line = replace_heading_tags(line, "#####", ["<h5>", "</h5>"])
+#             line = replace_heading_tags(line, "######", ["<h6>", "</h6>"])
+#             line = replace_tags(line, "*", ["<b>", "</b>"])
+#             line = replace_tags(line, "_", ["<i>", "</i>"])
+#             line = replace_tags(line, "~", ["<s>", "</s>"])
+#             line = replace_tags(line, "`", ["<code class='inline-code'>", "</code>"])
+#             line = re.sub(r'(http[s]?\:\/\/\S+)', r'<a href="\1">\1</a>', line)
+
+#         converted_lines.append(line)
+    
+#     html_string = "</br>".join(converted_lines)
+
+#     return html_string
+
+def handle_markdown_for_html(markdown):
+    escaped_markdown = html.escape(markdown)
+    converted_lines = []
+    for line in escaped_markdown.split("\n"):
+        line = re.sub(r'(http[s]?\:\/\/\S+)', r'<a href="\1">\1</a>', line)
+        converted_lines.append(line)
+    
+    return "</br>".join(converted_lines)
 
 def convert_html_data_to_html(html_data, messages_by_ids):
     html_string = ""
@@ -142,10 +274,15 @@ def convert_html_data_to_html(html_data, messages_by_ids):
                 html_string += f"<div class='{html_class}'>" #1
                 if element.get("main_channel_thread_message"):
                     og_message = messages_by_ids.get(element['tmid'], {'u': {'name': "Unknown"}, 'msg': f"Message ID {element['tmid']} not found"})
+                    if not og_message["msg"]:
+                        if og_message.get("attachments"):
+                            og_message["msg"] = og_message["attachments"][0].get("description", "")
                     html_string += f"<p class='thread-reply'><i>In reply to, {html.escape(og_message['u']['name'])}: {html.escape(og_message['msg'])}</i></p>"
-                html_string += f"<p class='message-title'><b>{html.escape(element['message_title']['user'])}</b> <i>{html.escape(element['message_title']['timestamp'])}</i>"
+                message_pinned = " Pinned a message " if element.get("t") == "message_pinned" else " "
+                html_string += f"<p class='message-title'><b>{html.escape(element['message_title']['user'])}</b>{message_pinned}<i>{html.escape(element['message_title']['timestamp'])}</i>"
                 if element.get('editedAt'):
-                    html_string += f"<span class='message-edit'>Edited at {html.escape(element['editedAt'])} by {html.escape(element['editedBy']['username'])}</span>"
+                    edit_type = "Message removed" if element.get("t") == "rm" else "Edited"
+                    html_string += f"<span class='message-edit'>{edit_type} at {html.escape(element['editedAt'])} by {html.escape(element['editedBy']['username'])}</span>"
                 html_string += "</p>"
                 html_string += "<div class='message-body'>" #2
                 html_string += process_html_data(element['md'])
@@ -177,7 +314,39 @@ def convert_html_data_to_html(html_data, messages_by_ids):
                 html_string += f"</br><a href='{html.escape(element['src'])}'>{html.escape(element['text'])}</a>"
                 html_string += "</div>"
             elif element['type'] == 'MESSAGE_QUOTE':
-                html_string += f"<p class='message-quote'>{html.escape('<QUOTE>')}</br><b>{html.escape(element['author_name'])}</b> <i>{html.escape(element['ts'])}</i></br><a href='{html.escape(element['src'])}'>{html.escape(element['src'])}</a></br>{html.escape(element['text'])}</br>{html.escape('</QUOTE>')}</p>"
+                html_string += f"<div class='message-quote'>{html.escape('<QUOTE>')}</br><b>{html.escape(element['author_name'])}</b> <i>{html.escape(element['ts'])}</i></br><a href='{html.escape(element['src'])}'>{html.escape(element['src'])}</a>"
+                if element.get("text"):
+                    html_string += f"</br>{handle_markdown_for_html(element['text'])}"
+                if element.get("subattachments"):
+                    for subattachment in element["subattachments"]:
+                        if subattachment.get('author_name') and subattachment.get('ts'):
+                            html_string += "</br>"
+                            html_string += f"</br><b>{html.escape(subattachment['author_name'])}</b> <i>{html.escape(subattachment['ts'])}</i>"
+                        if subattachment.get('message_link'):
+                            html_string += f"</br><a href='{html.escape(subattachment['message_link'])}'>{html.escape(subattachment['message_link'])}</a>"
+                        if subattachment.get('text'):
+                            html_string += "</br>"
+                            html_string += handle_markdown_for_html(subattachment['text'])
+                        if subattachment.get('title'):
+                            html_string += "</br>" + html.escape(f"<ATTACHMENT>{subattachment['title']}</ATTACHMENT>")
+                html_string += f"</br>{html.escape('</QUOTE>')}</div>"
+            elif element['type'] == 'MESSAGE_PINNED':
+                html_string += f"<div class='quote'><b>{html.escape(element['author_name'])}</b> <i>{html.escape(element['ts'])}</i>"
+                if element.get("text"):
+                    html_string += f"</br>{handle_markdown_for_html(element['text'])}"
+                if element.get("subattachments"):
+                    for subattachment in element["subattachments"]:
+                        if subattachment.get('author_name') and subattachment.get('ts'):
+                            html_string += "</br>"
+                            html_string += f"</br><b>{html.escape(subattachment['author_name'])}</b> <i>{html.escape(subattachment['ts'])}</i>"
+                        if subattachment.get('message_link'):
+                            html_string += f"</br><a href='{html.escape(subattachment['message_link'])}'>{html.escape(subattachment['message_link'])}</a>"
+                        if subattachment.get('text'):
+                            html_string += "</br>"
+                            html_string += handle_markdown_for_html(subattachment['text'])
+                        if subattachment.get('title'):
+                            html_string += "</br>" + html.escape(f"<ATTACHMENT>{subattachment['title']}</ATTACHMENT>")
+                html_string += f"</div>"
             elif element['type'] == 'REACTION':
                 html_string += "<div class='reaction'>"
                 html_string += f"<p class='reaction-emoji-padding'><b><u>{html.escape(element['emoji'])}</u></b></br><span class='reacted-by'>Reacted by ({len(element['names'])})</span>"
@@ -222,7 +391,10 @@ def convert_html_data_to_html(html_data, messages_by_ids):
                 html_string += process_html_data(element['value'])
                 html_string += "</div>"
             elif element['type'] == 'LINK':
-                html_string += f"<a href='{html.escape(element['value']['src']['value'])}'>"
+                link_src = element['value']['src']['value']
+                if link_src.startswith("//"):
+                    link_src = "https:" + link_src
+                html_string += f"<a href='{html.escape(link_src)}' title='{html.escape(link_src)}' rel='noopener noreferrer' target='_blank'>"
                 html_string += process_html_data(element['value']['label'])
                 html_string += "</a>"
             elif element['type'] == 'BOLD':
@@ -241,6 +413,10 @@ def convert_html_data_to_html(html_data, messages_by_ids):
                 html_string += "<s>"
                 html_string += process_html_data(element['value'])
                 html_string += "</s>"
+            elif element['type'] == 'HEADING':
+                html_string += f"<h{element['level']}>"
+                html_string += process_html_data(element['value'])
+                html_string += f"</{element['level']}>"
             elif element['type'] == 'LINE_BREAK':
                 html_string += "</br>"
             elif element['type'] == 'UNORDERED_LIST':
@@ -350,6 +526,10 @@ def convert_json_to_html(output_dir, json_data):
                             },
                             {
                                 "type": 'STYLESHEET_STYLE',
+                                "value": '.big-emoji > .emoji {margin-right: 10px;}'
+                            },
+                            {
+                                "type": 'STYLESHEET_STYLE',
                                 "value": '.thread-messages {height: 300px;overflow-y: auto;width: 30%;border: solid 1px;padding: 10px;}'
                             },
                             {
@@ -399,12 +579,16 @@ def convert_json_to_html(output_dir, json_data):
                 messages_by_ids[message["_id"]] = message
 
                 if not thread and message.get("tmid"):
+                    if not message.get("tshow"):
+                        continue
                     message_html["main_channel_thread_message"] = True
                     message_html["tmid"] = message["tmid"]
 
                 if message.get("editedAt"):
                     message_html["editedAt"] = message["editedAt"]
                     message_html["editedBy"] = message["editedBy"]
+                if message.get("t"):
+                    message_html["t"] = message["t"]
                 if message.get("md"):
                     message_html["md"].extend(message["md"])
                 if message.get("attachments"):
@@ -436,14 +620,83 @@ def convert_json_to_html(output_dir, json_data):
                                 attachment_html['type'] = 'FILE'
                                 attachment_html["src"] = urllib.parse.quote(os.path.join(attachments_dir, attachment_name))
                                 attachment_html["text"] = os.path.join(attachments_dir, attachment_name)
-                                attachment_html["name"] = attachment['title'],
+                                attachment_html["name"] = attachment['title']
 
                         if attachment.get('message_link'):
                             attachment_html['type'] = 'MESSAGE_QUOTE'
                             attachment_html["ts"] = attachment['ts']
                             attachment_html["src"] = attachment['message_link']
                             attachment_html["author_name"] = attachment['author_name']
-                            attachment_html["text"] = re.sub(r'(http[s]?\:\/\/\S+)', r'<a href="\1">\1</a>', attachment['text'])
+                            attachment_html["text"] = remove_empty_links(attachment['text'])
+                            if attachment.get('attachments'):
+                                attachment_html["subattachments"] = []
+                                subattachments = attachment['attachments']
+                                while subattachments:
+                                    subattachment = subattachments[0]
+                                    subattachment_html = {}
+                                    if subattachment.get("text"):
+                                        subattachment_html["text"] = remove_empty_links(subattachment['text'])
+                                    if subattachment.get("author_name") and subattachment.get("ts"):
+                                        subattachment_html["author_name"] = subattachment["author_name"]
+                                        subattachment_html["ts"] = subattachment["ts"]
+                                    if subattachment.get("message_link"):
+                                        subattachment_html["message_link"] = subattachment["message_link"]
+                                    if subattachment.get("title"):
+                                        subattachment_html["title"] = subattachment["title"]
+                                    # if subattachment.get("message_link"):
+                                    #     if attachment_html["text"]:
+                                    #         attachment_html["text"] += '\n'
+                                    #     if subattachment.get("author_name"):
+                                    #         attachment_html["text"] += f"*{subattachment['author_name']}*"
+                                    #     if subattachment.get("ts"):
+                                    #         attachment_html["text"] += f" _{subattachment['ts']}_\n"
+                                    #     attachment_html["text"] += subattachment["message_link"]
+                                    # if subattachment.get("text"):
+                                    #     if attachment_html["text"]:
+                                    #         attachment_html["text"] += '\n'
+                                    #     subattachment_text = subattachment["text"].split("\n")
+                                    #     new_subattachment_text = []
+                                    #     for line in subattachment_text:
+                                    #         if not line.startswith("[ ]"):
+                                    #             new_subattachment_text.append(line)
+                                    #     attachment_html["text"] += '\n'.join(new_subattachment_text)
+                                    # if subattachment.get("title"):
+                                    #     if attachment_html["text"]:
+                                    #         attachment_html["text"] += '\n'
+                                    #     attachment_html["text"] += subattachment["title"]
+                                    attachment_html["subattachments"].append(subattachment_html)
+
+                                    if subattachment.get("attachments"):
+                                        subattachments.extend(subattachment["attachments"])
+                                    
+                                    del subattachments[0]
+
+                        if message.get("t") == "message_pinned":
+                            attachment_html['type'] = 'MESSAGE_PINNED'
+                            attachment_html["ts"] = attachment['ts']
+                            attachment_html["author_name"] = attachment['author_name']
+                            attachment_html["text"] = remove_empty_links(attachment['text'])
+                            if attachment.get('attachments'):
+                                attachment_html["subattachments"] = []
+                                subattachments = attachment['attachments']
+                                while subattachments:
+                                    subattachment = subattachments[0]
+                                    subattachment_html = {}
+                                    if subattachment.get("text"):
+                                        subattachment_html["text"] = remove_empty_links(subattachment['text'])
+                                    if subattachment.get("author_name") and subattachment.get("ts"):
+                                        subattachment_html["author_name"] = subattachment["author_name"]
+                                        subattachment_html["ts"] = subattachment["ts"]
+                                    if subattachment.get("message_link"):
+                                        subattachment_html["message_link"] = subattachment["message_link"]
+                                    if subattachment.get("title"):
+                                        subattachment_html["title"] = subattachment["title"]
+                                    attachment_html["subattachments"].append(subattachment_html)
+
+                                    if subattachment.get("attachments"):
+                                        subattachments.extend(subattachment["attachments"])
+                                    
+                                    del subattachments[0]
 
                         message_html["attachments"].append(attachment_html)
 
@@ -453,7 +706,7 @@ def convert_json_to_html(output_dir, json_data):
                             "type": 'REACTION',
                             "emoji": key,
                             "usernames": value["usernames"],
-                            "names": value["names"]
+                            "names": value.get("names", [""] * len(value["usernames"]))
                         }
                         message_html["reactions"].append(reaction_html)
 
@@ -777,6 +1030,7 @@ def main():
 
     for channel_id, channel_data in room_state.items():
         if channel_id != '_meta':  # skip state metadata which is not a channel
+            #TODO add support for filtering on channel name
             logger.info('------------------------')
             logger.info('Processing room: ' + channel_id + ' - ' + channel_data['name'])
 
